@@ -56,17 +56,8 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const otp = () => {
-  return (
-    <View>
-      <Text>OTP</Text>
-    </View>
-  );
-};
 
 export default function HomeLayout() {
-  const router = useRouter();
-  const pathname = usePathname();
 
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState("");
@@ -92,12 +83,11 @@ export default function HomeLayout() {
     const unsubscribeAuthStateChanged = onAuthStateChanged(
       auth,
       (authenticatedUser) => {
-
-        
-        authenticatedUser?.emailVerified
+        authenticatedUser
           ? setUser(authenticatedUser)
           : setUser(null);
-        setInitialized(true);
+
+       setInitialized(true);
       }
     );
 
@@ -131,10 +121,18 @@ export default function HomeLayout() {
           setAwaitingVerification(true);
           return;
         }
-
-        console.log(user);
+        setInitialized(true);
       })
       .catch((error) => {
+
+        if (error.code === "auth/wrong-password") {
+          Alert.alert("Incorrect password");
+        } else if (error.code === "auth/user-not-found") {
+          Alert.alert("User not found");
+        } else if (error.code === "auth/invalid-email") {
+          Alert.alert("Invalid email");
+        }
+
         console.log(error);
       });
   };
@@ -150,7 +148,7 @@ export default function HomeLayout() {
         setEmail("");
         setPassword("");
         setConfirmPassword("");
-        
+
         sendEmailVerification(auth.currentUser)
           .then(() => {
             Alert.alert("Verification email sent");
@@ -179,11 +177,12 @@ export default function HomeLayout() {
       checkInterval = setInterval(() => {
         auth.currentUser.reload().then(() => {
           let emailVerified = auth.currentUser.emailVerified;
-          console.log("Email Verified: ", emailVerified);
+          // console.log("Email Verified: ", emailVerified);
           if (emailVerified) {
             setUser(auth.currentUser); // update the user state (if email is verified
             clearInterval(checkInterval); // stop checking when email is verified
             setAwaitingVerification(false); // update the state
+            setInitialized(true); // update the state
           }
         });
       }, 5000); // Check every 5 seconds
@@ -223,16 +222,7 @@ export default function HomeLayout() {
     }
   }, [initialized]);
 
-  if (!initialized)
-    return (
-      <View
-        style={{
-          backgroundColor: "#ff595e",
-          flex: 1,
-        }}
-      ></View>
-    );
-
+ 
   if (forgotPassword) {
     return <ForgotPassword setForgotPassword={setForgotPassword} />;
   }
@@ -308,6 +298,16 @@ export default function HomeLayout() {
       </SafeAreaView>
     );
   }
+
+  if (!initialized)
+  return (
+    <View
+      style={{
+        backgroundColor: "#ff595e",
+        flex: 1,
+      }}
+    ></View>
+  );
 
   // if (verifyingCode)
   //   return (

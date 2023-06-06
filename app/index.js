@@ -49,6 +49,7 @@ import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StatusBar, setHideStatusBar } from "expo-status-bar";
+import { getIdToken } from "firebase/auth";
 
 const adUnitId =
   __DEV__ || ENVIRONMENT !== "production" ? TestIds.BANNER : BANNER;
@@ -316,6 +317,9 @@ export default function Page() {
             : "Don't use any emojis in the caption."
         }.`;
 
+      let token = await getIdToken(auth.currentUser)
+      console.log(token)
+
       const response = await axios.post(
         // ENVIRONMENT === "development"
         //   ? "https://generatecaptionstest-napp6sn2ga-uc.a.run.app"
@@ -328,6 +332,7 @@ export default function Page() {
         {
           headers: {
             "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
           },
         }
       );
@@ -370,7 +375,7 @@ export default function Page() {
   useEffect(() => {
     const db = getFirestore();
 
-    const uid = auth.currentUser.uid;
+    const uid = auth?.currentUser.uid;
 
     const unsubscribe = onSnapshot(
       doc(db, "user-captions", uid),
