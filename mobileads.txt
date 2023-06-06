@@ -1,0 +1,4 @@
+"react-native-google-mobile-ads": {
+      "android_app_id": "ca-app-pub-xxxxxxxx~xxxxxxxx",
+      "ios_app_id": "ca-app-pub-6829607168370468~8665173401"
+    },
