@@ -34,6 +34,7 @@ import {
 } from "firebase/firestore";
 import { ENVIRONMENT, REWARDED_INTERSTITIAL, BANNER } from "@env";
 import { Picker } from "@react-native-picker/picker";
+import { auth } from "../lib/firebaseConfig";
 
 import {
   BannerAd,
@@ -427,8 +428,6 @@ export default function Page() {
       unsubscribeError();
     };
   }, []);
-
-  
 
   return (
     <>

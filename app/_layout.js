@@ -25,10 +25,21 @@ import {
 import IonIcons from "@expo/vector-icons/Ionicons";
 import FireImage from "../assets/fire-image.png";
 import { Modal } from "react-native";
-// import { doc, getFirestore, onSnapshot, setDoc } from "firebase/firestore";
+import { doc, getFirestore, onSnapshot, setDoc } from "firebase/firestore";
+import {
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  phoneNumber,
+} from "firebase/auth";
+// import { FirebaseRecaptchaVerifier } from "expo-firebase-recaptcha";
+import { auth } from "../lib/firebaseConfig";
 // import auth from '@react-native-firebase/auth'
 
 import "expo-dev-client";
+import ForgotPassword from "../Components/forgotPassword";
 
 // import {
 //   InterstitialAd,
@@ -44,6 +55,14 @@ if (
 ) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
+
+const otp = () => {
+  return (
+    <View>
+      <Text>OTP</Text>
+    </View>
+  );
+};
 
 export default function HomeLayout() {
   const router = useRouter();
@@ -64,17 +83,20 @@ export default function HomeLayout() {
 
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [loginOrRegister, setLoginOrRegister] = useState("login");
-  const [verificationId, setVerificationId] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [code, setCode] = useState("");
-  const [verifyingCode, setVerifyingCode] = useState(false);
+  const [awaitingVerification, setAwaitingVerification] = useState(false);
+
+  const [forgotPassword, setForgotPassword] = useState(false);
 
   useEffect(() => {
     // onAuthStateChanged returns an unsubscriber
     const unsubscribeAuthStateChanged = onAuthStateChanged(
       auth,
       (authenticatedUser) => {
-        authenticatedUser ? setUser(authenticatedUser) : setUser(null);
+
+        
+        authenticatedUser?.emailVerified
+          ? setUser(authenticatedUser)
+          : setUser(null);
         setInitialized(true);
       }
     );
@@ -83,20 +105,101 @@ export default function HomeLayout() {
     return unsubscribeAuthStateChanged;
   }, [user]);
 
-  // const deleteAllCaptions = async () => {
-  //   const db = getFirestore();
-  //   const uid = auth.currentUser.uid;
+  useEffect(() => {});
 
-  //   try {
-  //     await setDoc(doc(db, "user-captions", uid), {
-  //       captions: [],
-  //     });
-  //   } catch (error) {
-  //     console.log(error);
-  //   }
-  // };
+  const deleteAllCaptions = async () => {
+    const db = getFirestore();
+    const uid = auth.currentUser.uid;
+
+    try {
+      await setDoc(doc(db, "user-captions", uid), {
+        captions: [],
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   // if(!initialized) return <LoadingScreen />;
+
+  const handleLogin = async () => {
+    signInWithEmailAndPassword(auth, email, password)
+      .then((userCredential) => {
+        const user = userCredential.user;
+        if (!user.emailVerified) {
+          Alert.alert("Please verify your email");
+          setAwaitingVerification(true);
+          return;
+        }
+
+        console.log(user);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  };
+
+  const handleRegister = async () => {
+    if (password !== confirmPassword) {
+      Alert.alert("Passwords do not match");
+      return;
+    }
+
+    createUserWithEmailAndPassword(auth, email, password)
+      .then((userCredential) => {
+        setEmail("");
+        setPassword("");
+        setConfirmPassword("");
+        
+        sendEmailVerification(auth.currentUser)
+          .then(() => {
+            Alert.alert("Verification email sent");
+            setAwaitingVerification(true);
+          })
+          .catch((error) => {
+            console.log(error);
+          });
+      })
+      .catch((error) => {
+        if (error.code === "auth/email-already-in-use") {
+          Alert.alert("Email already in use");
+        }
+        console.log(error);
+      });
+  };
+
+  const handleLogout = async () => {
+    auth.signOut();
+  };
+
+  let checkInterval;
+
+  useEffect(() => {
+    if (awaitingVerification) {
+      checkInterval = setInterval(() => {
+        auth.currentUser.reload().then(() => {
+          let emailVerified = auth.currentUser.emailVerified;
+          console.log("Email Verified: ", emailVerified);
+          if (emailVerified) {
+            setUser(auth.currentUser); // update the user state (if email is verified
+            clearInterval(checkInterval); // stop checking when email is verified
+            setAwaitingVerification(false); // update the state
+          }
+        });
+      }, 5000); // Check every 5 seconds
+    } else if (checkInterval) {
+      // If not awaiting verification and interval exists, clear it
+      clearInterval(checkInterval);
+    }
+
+    // cleanup function to clear the interval when the component unmounts
+    return () => {
+      if (checkInterval) {
+        clearInterval(checkInterval);
+      }
+    };
+  }, [awaitingVerification]); // Depe
+
   useEffect(() => {
     if (initialized) {
       Animated.parallel([
@@ -130,9 +233,13 @@ export default function HomeLayout() {
       ></View>
     );
 
-  if (verifyingCode)
+  if (forgotPassword) {
+    return <ForgotPassword setForgotPassword={setForgotPassword} />;
+  }
+
+  if (awaitingVerification) {
     return (
-      <View
+      <SafeAreaView
         style={{
           flex: 1,
           backgroundColor: "#ff595e",
@@ -140,21 +247,95 @@ export default function HomeLayout() {
           alignItems: "center",
         }}
       >
-        <TextInput
+        <View
           style={{
-            height: 40,
-            borderColor: "gray",
-            borderWidth: 1,
-            width: 200,
+            flex: 0,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "white",
+            padding: 20,
+            borderRadius: 10,
           }}
-          onChangeText={(text) => setCode(text)}
-          value={code}
-        />
-        <Button title="Confirm" onPress={confirmCode} />
-      </View>
+        >
+          <IonIcons
+            name="mail"
+            size={80}
+            color="#ff595e"
+            style={{ marginBottom: 10 }}
+          />
+          <Text style={{ fontSize: 20, fontWeight: "bold" }}>
+            Please verify your email
+          </Text>
+          <Pressable
+            style={{
+              backgroundColor: "#ff595e",
+              paddingHorizontal: 25,
+              paddingVertical: 10,
+              borderRadius: 5,
+              marginTop: 10,
+              width: "100%",
+            }}
+            onPress={() => {
+              sendEmailVerification(auth.currentUser)
+                .then(() => {
+                  Alert.alert("Verification email sent");
+                })
+                .catch((error) => {
+                  console.log(error);
+                });
+            }}
+          >
+            <Text style={{ color: "white" }}>Resend verification email</Text>
+          </Pressable>
+          <Pressable
+            style={{
+              // backgroundColor: "#ff595e",
+              paddingHorizontal: 25,
+              paddingVertical: 10,
+              borderRadius: 5,
+              marginTop: 10,
+              width: "100%",
+            }}
+            onPress={() => {
+              setAwaitingVerification(false);
+              auth.signOut();
+              setUser(null);
+            }}
+          >
+            <Text style={{ color: "#ff595e" }}>Back to login</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
     );
+  }
 
-  if (user)
+  // if (verifyingCode)
+  //   return (
+  //     <View
+  //       style={{
+  //         flex: 1,
+  //         backgroundColor: "#ff595e",
+  //         justifyContent: "center",
+  //         alignItems: "center",
+  //       }}
+  //     >
+  //       <View>
+  //         <TextInput
+  //           style={{
+  //             height: 40,
+  //             borderColor: "gray",
+  //             borderWidth: 1,
+  //             width: 200,
+  //           }}
+  //           onChangeText={(text) => setCode(text)}
+  //           value={code}
+  //         />
+  //         <Button title="Confirm" onPress={confirmCode} />
+  //       </View>
+  //     </View>
+  //   );
+
+  if (user && !awaitingVerification)
     return (
       <>
         <Animated.View
@@ -284,7 +465,7 @@ export default function HomeLayout() {
                     {
                       text: "Delete",
                       onPress: () => {
-                        // deleteAllCaptions();
+                        deleteAllCaptions();
                         setShowSettingsModal(false);
                       },
                       style: "destructive",
@@ -326,7 +507,7 @@ export default function HomeLayout() {
                     text: "Logout",
                     onPress: () => {
                       setShowSettingsModal(false);
-                      // handleLogout();
+                      handleLogout();
                     },
                     style: "destructive",
                   },
@@ -361,7 +542,6 @@ export default function HomeLayout() {
     return (
       <>
         <StatusBar barStyle="light-content" />
-
         <SafeAreaView
           style={{
             backgroundColor: "#ff595c",
@@ -524,6 +704,7 @@ export default function HomeLayout() {
                       Email
                     </Text>
                     <TextInput
+                      id="email"
                       placeholder="Email"
                       value={email}
                       onChangeText={(text) => setEmail(text)}
@@ -539,6 +720,7 @@ export default function HomeLayout() {
                     </Text>
 
                     <TextInput
+                      id="password"
                       placeholder="Password"
                       secureTextEntry={true}
                       value={password}
@@ -556,6 +738,7 @@ export default function HomeLayout() {
                           Confirm Password
                         </Text>
                         <TextInput
+                          id="confirmPassword"
                           placeholder="Confirm Password"
                           secureTextEntry={true}
                           value={confirmPassword}
@@ -563,7 +746,7 @@ export default function HomeLayout() {
                           style={styles.authTextInput}
                         />
                         <Pressable
-                          // onPress={() => handleRegister()}
+                          onPress={() => handleRegister()}
                           style={{
                             backgroundColor: "#ff595e",
                             padding: 10,
@@ -585,13 +768,25 @@ export default function HomeLayout() {
                       </>
                     ) : (
                       <>
+                        <Pressable onPress={() => setForgotPassword(true)}>
+                          <Text
+                            style={{
+                              color: "#ff595e",
+                              textAlign: "center",
+                              fontWeight: "bold",
+                              fontSize: 16,
+                              marginVertical: 10,
+                            }}
+                          >
+                            Forgot Password?
+                          </Text>
+                        </Pressable>
                         <Pressable
-                          // onPress={() => handleLogin()}
+                          onPress={() => handleLogin()}
                           style={{
                             backgroundColor: "#ff595e",
                             padding: 10,
                             borderRadius: 10,
-                            marginTop: 20,
                           }}
                         >
                           <Text
