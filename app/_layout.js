@@ -56,9 +56,7 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-
 export default function HomeLayout() {
-
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -83,11 +81,9 @@ export default function HomeLayout() {
     const unsubscribeAuthStateChanged = onAuthStateChanged(
       auth,
       (authenticatedUser) => {
-        authenticatedUser
-          ? setUser(authenticatedUser)
-          : setUser(null);
+        authenticatedUser ? setUser(authenticatedUser) : setUser(null);
 
-       setInitialized(true);
+        setInitialized(true);
       }
     );
 
@@ -124,7 +120,6 @@ export default function HomeLayout() {
         setInitialized(true);
       })
       .catch((error) => {
-
         if (error.code === "auth/wrong-password") {
           Alert.alert("Incorrect password");
         } else if (error.code === "auth/user-not-found") {
@@ -168,6 +163,31 @@ export default function HomeLayout() {
 
   const handleLogout = async () => {
     auth.signOut();
+  };
+
+  const handleAccountDeletion = async () => {
+    Alert.alert(
+      "Are you sure you want to delete your account?",
+      "This action cannot be undone",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteAllCaptions();
+              await auth.currentUser.delete();
+            } catch (error) {
+              console.log(error);
+            }
+          },
+        },
+      ]
+    );
   };
 
   let checkInterval;
@@ -222,7 +242,6 @@ export default function HomeLayout() {
     }
   }, [initialized]);
 
- 
   if (forgotPassword) {
     return <ForgotPassword setForgotPassword={setForgotPassword} />;
   }
@@ -300,14 +319,14 @@ export default function HomeLayout() {
   }
 
   if (!initialized)
-  return (
-    <View
-      style={{
-        backgroundColor: "#ff595e",
-        flex: 1,
-      }}
-    ></View>
-  );
+    return (
+      <View
+        style={{
+          backgroundColor: "#ff595e",
+          flex: 1,
+        }}
+      ></View>
+    );
 
   // if (verifyingCode)
   //   return (
@@ -532,6 +551,44 @@ export default function HomeLayout() {
                 }}
               >
                 Logout
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                Alert.alert("Logout?", "Are you sure you want to logout?", [
+                  {
+                    text: "Cancel",
+                    onPress: () => console.log("Cancel Pressed"),
+                    style: "cancel",
+                  },
+                  {
+                    text: "Logout",
+                    onPress: () => {
+                      handleAccountDeletion();
+                    },
+                    style: "destructive",
+                  },
+                ]);
+              }}
+              style={{
+                backgroundColor: "#ff595e",
+                padding: 10,
+                borderRadius: 10,
+                marginTop: 20,
+                height: 50,
+                flex: 0,
+                justifyContent: "center",
+              }}
+            >
+              <Text
+                style={{
+                  color: "white",
+                  textAlign: "center",
+                  fontWeight: "bold",
+                  fontSize: 16,
+                }}
+              >
+                Delete Account
               </Text>
             </Pressable>
           </View>
