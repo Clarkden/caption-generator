@@ -112,6 +112,8 @@ export default function HomeLayout() {
     signInWithEmailAndPassword(auth, email, password)
       .then((userCredential) => {
         const user = userCredential.user;
+        setEmail("");
+        setPassword("");
         if (!user.emailVerified) {
           Alert.alert("Please verify your email");
           setAwaitingVerification(true);
@@ -555,20 +557,20 @@ export default function HomeLayout() {
             </Pressable>
             <Pressable
               onPress={() => {
-                Alert.alert("Logout?", "Are you sure you want to logout?", [
-                  {
-                    text: "Cancel",
-                    onPress: () => console.log("Cancel Pressed"),
-                    style: "cancel",
-                  },
-                  {
-                    text: "Logout",
-                    onPress: () => {
+                // Alert.alert("Logout?", "Are you sure you want to logout?", [
+                //   {
+                //     text: "Cancel",
+                //     onPress: () => console.log("Cancel Pressed"),
+                //     style: "cancel",
+                //   },
+                //   {
+                    // text: "Logout",
+                    // onPress: () => {
                       handleAccountDeletion();
-                    },
-                    style: "destructive",
-                  },
-                ]);
+                    // },
+                    // style: "destructive",
+                  // },
+                // ]);
               }}
               style={{
                 backgroundColor: "#ff595e",

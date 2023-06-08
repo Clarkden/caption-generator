@@ -13,7 +13,7 @@
     ],
     "name": "caption-generator",
     "slug": "caption-generator",
-    "version": "0.8.0",
+    "version": "0.9.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -46,6 +46,6 @@
     }
   },
   "react-native-google-mobile-ads": {
-    "ios_app_id": "ca-app-pub-6829607168370468~8665173401"
+    "ios_app_id": "ca-app-pub-6121732136653487~6581466353"
   }
 }
